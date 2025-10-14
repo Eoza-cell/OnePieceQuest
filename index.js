@@ -1,33 +1,34 @@
 const makeWASocket = require('@whiskeysockets/baileys').default;
-const { useMultiFileAuthState, DisconnectReason, makeInMemoryStore } = require('@whiskeysockets/baileys');
+const { useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const pino = require('pino');
 const NodeCache = require('node-cache');
+const qrcode = require('qrcode-terminal');
 const CommandHandler = require('./src/commands/CommandHandler');
 
 const msgRetryCounterCache = new NodeCache();
-const store = makeInMemoryStore({
-    logger: pino().child({ level: 'silent', stream: 'store' })
-});
 
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
     const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true,
         logger: pino({ level: 'silent' }),
         msgRetryCounterCache,
         generateHighQualityLinkPreview: true,
         defaultQueryTimeoutMs: undefined
     });
 
-    store.bind(sock.ev);
-
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
+        const { connection, lastDisconnect, qr } = update;
+        
+        if (qr) {
+            console.log('\n📱 Scannez ce QR code avec WhatsApp:\n');
+            qrcode.generate(qr, { small: true });
+            console.log('\n⚠️ Le QR code expire après quelques secondes. Rechargez si nécessaire.\n');
+        }
         
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error instanceof Boom

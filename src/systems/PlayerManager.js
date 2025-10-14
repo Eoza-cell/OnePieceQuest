@@ -124,6 +124,7 @@ class PlayerManager {
         if (leveledUp) {
             player.level += 1;
             player.xp -= xpNeeded;
+            await this.savePlayers();
             return { leveledUp: true, newLevel: player.level, pointsToDistribute: 10 };
         }
 
