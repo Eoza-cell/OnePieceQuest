@@ -50,15 +50,20 @@ class CommandHandler {
             return;
         }
 
+        // Utiliser l'ID du sender (en privé si groupe, sinon jid direct)
         const senderId = message.key.participant || jid;
+        
+        // Envoyer la réponse en PRIVÉ au joueur (pas dans le groupe)
+        const replyTo = senderId;
+        
         await PlayerManager.regenerateEnergy(senderId);
 
         try {
-            await this.commands[commandName](client, senderId, args, jid);
-            console.log(`✅ Commande ${commandName} exécutée pour ${senderId}, réponse → ${jid}`);
+            await this.commands[commandName](client, senderId, args, replyTo);
+            console.log(`✅ Commande ${commandName} exécutée pour ${senderId}, réponse → ${replyTo} (privé)`);
         } catch (error) {
             console.error(`❌ Erreur commande ${commandName}:`, error);
-            await CommandHandler.sendMessage(client, jid, '❌ Une erreur est survenue. Réessayez plus tard.');
+            await CommandHandler.sendMessage(client, replyTo, '❌ Une erreur est survenue. Réessayez plus tard.');
         }
     }
 
@@ -382,7 +387,72 @@ Exemple: ${this.prefix}voyage Grand Line`;
     }
 
     async handleCombat(client, sender, args, replyTo) {
-        await CommandHandler.sendMessage(client, replyTo, `⚔️ *SYSTÈME DE COMBAT* ⚔️\n\nLe système de combat entre joueurs sera disponible prochainement!\n\nPour l'instant, entraînez-vous avec ${this.prefix}entrainement pour devenir plus fort!`);
+        const player = PlayerManager.getPlayer(sender);
+
+        if (!player) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Vous n'avez pas encore de personnage!\n\nUtilisez ${this.prefix}start pour commencer.`);
+            return;
+        }
+
+        if (args.length === 0) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Usage: ${this.prefix}combat [@joueur]\n\nMentionnez un joueur pour le défier!\n\nExemple: ${this.prefix}combat @22663685468`);
+            return;
+        }
+
+        // Extraire le numéro du joueur adversaire (format: @221234567890)
+        const opponentMention = args[0];
+        let opponentId = opponentMention.replace('@', '') + '@s.whatsapp.net';
+        
+        // Si le format n'est pas bon, essayer sans modification
+        if (!opponentMention.startsWith('@')) {
+            opponentId = opponentMention + '@s.whatsapp.net';
+        }
+
+        const opponent = PlayerManager.getPlayer(opponentId);
+
+        if (!opponent) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Ce joueur n'a pas encore créé de personnage!\n\nIl doit utiliser ${this.prefix}start pour créer son personnage.`);
+            return;
+        }
+
+        if (sender === opponentId) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Vous ne pouvez pas vous battre contre vous-même!`);
+            return;
+        }
+
+        // Vérifier l'énergie
+        const energyCost = 20;
+        if (player.currentEnergy < energyCost) {
+            await CommandHandler.sendMessage(client, replyTo, `⚠️ Énergie insuffisante!\n\nVous avez besoin de ${energyCost} énergie pour combattre.\nÉnergie actuelle: ${player.currentEnergy}/${player.maxEnergy}\n\n💤 L'énergie se régénère de 10 par minute.`);
+            return;
+        }
+
+        // Consommer l'énergie
+        await PlayerManager.consumeEnergy(sender, energyCost);
+
+        // Simuler le combat
+        const combatResult = CombatSystem.simulateFight(player, opponent);
+
+        // Récompenses
+        const xpGained = combatResult.winner === player ? 150 : 50;
+        const berrysGained = combatResult.winner === player ? 500 : 100;
+
+        await PlayerManager.addXP(sender, xpGained);
+        await PlayerManager.addBerrys(sender, berrysGained);
+
+        // Message de résultat
+        let resultText = `⚔️ *COMBAT: ${player.name} VS ${opponent.name}* ⚔️\n\n`;
+        resultText += `${combatResult.results}\n\n`;
+        resultText += `💰 Récompenses:\n`;
+        resultText += `⭐ +${xpGained} XP\n`;
+        resultText += `💰 +${berrysGained} Berrys\n`;
+        resultText += `⚡ -${energyCost} énergie`;
+
+        await CommandHandler.sendMessage(client, replyTo, resultText);
+
+        // Notifier l'adversaire
+        const opponentNotif = `⚔️ *COMBAT!*\n\n${player.name} vous a défié en combat!\n\n${combatResult.results}\n\n${combatResult.winner.name === opponent.name ? '🏆 Vous avez gagné!' : '💔 Vous avez perdu...'}`;
+        await CommandHandler.sendMessage(client, opponentId, opponentNotif);
     }
 
     async handleHelp(client, sender, args, replyTo) {
