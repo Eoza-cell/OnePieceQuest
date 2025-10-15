@@ -1,0 +1,374 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONE PIECE: NOUVELLE ÈRE - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 3px solid #ffd700;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .subtitle {
+            color: #ffd700;
+            font-size: 1.2em;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #ffd700;
+        }
+
+        .card h2 {
+            color: #ffd700;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online {
+            background: #00ff00;
+        }
+
+        .status-indicator.offline {
+            background: #ff0000;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .commands-list {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .command-group {
+            margin-bottom: 20px;
+        }
+
+        .command-group h3 {
+            color: #ffd700;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .command-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 3px solid #ffd700;
+        }
+
+        .command-item code {
+            color: #00ff00;
+            font-weight: bold;
+        }
+
+        .qr-section {
+            text-align: center;
+            padding: 20px;
+        }
+
+        #qrCode {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 20px 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        button {
+            background: #ffd700;
+            color: #1e3c72;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #ffed4e;
+            transform: scale(1.05);
+        }
+
+        .log-section {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 8px;
+            margin: 5px 0;
+            border-left: 3px solid #00ff00;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            opacity: 0.7;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏴‍☠️ ONE PIECE: NOUVELLE ÈRE 🏴‍☠️</h1>
+            <p class="subtitle">Bot WhatsApp RPG - Tableau de Bord</p>
+        </header>
+
+        <div class="dashboard">
+            <div class="card">
+                <h2>📊 Statut du Bot</h2>
+                <div class="status">
+                    <div class="status-indicator" id="statusIndicator"></div>
+                    <span id="statusText">Vérification...</span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="playerCount">0</div>
+                        <div class="stat-label">Joueurs</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="messageCount">0</div>
+                        <div class="stat-label">Messages</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card qr-section">
+                <h2>📱 QR Code WhatsApp</h2>
+                <div id="qrCode">
+                    <p>En attente du QR code...</p>
+                </div>
+                <button onclick="refreshQR()">🔄 Rafraîchir</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📋 Commandes Disponibles</h2>
+            <div class="commands-list">
+                <div class="command-group">
+                    <h3>👤 Personnage</h3>
+                    <div class="command-item">
+                        <code>!start</code> - Démarrer l'aventure
+                    </div>
+                    <div class="command-item">
+                        <code>!creer [nom] [race]</code> - Créer un personnage
+                    </div>
+                    <div class="command-item">
+                        <code>!profil</code> - Voir son profil
+                    </div>
+                    <div class="command-item">
+                        <code>!stats</code> - Statistiques détaillées
+                    </div>
+                </div>
+
+                <div class="command-group">
+                    <h3>🌍 Actions</h3>
+                    <div class="command-item">
+                        <code>!voyage [zone]</code> - Voyager vers une zone
+                    </div>
+                    <div class="command-item">
+                        <code>!entrainement [attribut]</code> - S'entraîner
+                    </div>
+                    <div class="command-item">
+                        <code>!combat [@joueur]</code> - Défier un joueur
+                    </div>
+                </div>
+
+                <div class="command-group">
+                    <h3>📚 Informations</h3>
+                    <div class="command-item">
+                        <code>!menu</code> - Menu principal
+                    </div>
+                    <div class="command-item">
+                        <code>!races</code> - Liste des races
+                    </div>
+                    <div class="command-item">
+                        <code>!zones</code> - Liste des zones
+                    </div>
+                    <div class="command-item">
+                        <code>!attributs</code> - Explication des attributs
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📝 Logs du Bot</h2>
+            <div class="log-section" id="logSection">
+                <div class="log-entry">🚀 En attente des logs...</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Bot WhatsApp RPG One Piece - Développé avec Baileys</p>
+            <p>Dans un monde où les mers n'ont pas de fin, seule la volonté forge les légendes.</p>
+        </div>
+    </div>
+
+    <script>
+        // Fonction pour rafraîchir le QR code
+        function refreshQR() {
+            fetch('/api/qr')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.qr) {
+                        document.getElementById('qrCode').innerHTML = `<img src="${data.qr}" alt="QR Code" style="max-width: 250px;">`;
+                    } else {
+                        document.getElementById('qrCode').innerHTML = '<p>Bot déjà connecté ✅</p>';
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('qrCode').innerHTML = '<p>❌ Erreur de chargement</p>';
+                });
+        }
+
+        // Fonction pour mettre à jour le statut
+        function updateStatus() {
+            fetch('/api/status')
+                .then(res => res.json())
+                .then(data => {
+                    const indicator = document.getElementById('statusIndicator');
+                    const text = document.getElementById('statusText');
+                    
+                    if (data.connected) {
+                        indicator.className = 'status-indicator online';
+                        text.textContent = '✅ Connecté à WhatsApp';
+                    } else {
+                        indicator.className = 'status-indicator offline';
+                        text.textContent = '❌ Déconnecté';
+                    }
+                    
+                    document.getElementById('playerCount').textContent = data.players || 0;
+                    document.getElementById('messageCount').textContent = data.messages || 0;
+                })
+                .catch(() => {
+                    document.getElementById('statusIndicator').className = 'status-indicator offline';
+                    document.getElementById('statusText').textContent = '❌ Erreur de connexion';
+                });
+        }
+
+        // Fonction pour charger les logs
+        function loadLogs() {
+            fetch('/api/logs')
+                .then(res => res.json())
+                .then(data => {
+                    const logSection = document.getElementById('logSection');
+                    logSection.innerHTML = data.logs.map(log => 
+                        `<div class="log-entry">${log}</div>`
+                    ).join('');
+                    logSection.scrollTop = logSection.scrollHeight;
+                })
+                .catch(() => {
+                    document.getElementById('logSection').innerHTML = '<div class="log-entry">❌ Erreur de chargement des logs</div>';
+                });
+        }
+
+        // Mise à jour automatique toutes les 5 secondes
+        setInterval(updateStatus, 5000);
+        setInterval(loadLogs, 3000);
+        
+        // Chargement initial
+        updateStatus();
+        loadLogs();
+        refreshQR();
+    </script>
+</body>
+</html>

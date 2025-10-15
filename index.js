@@ -3,7 +3,13 @@ import makeWASocket, { useMultiFileAuthState, DisconnectReason } from '@whiskeys
 import { Boom } from '@hapi/boom';
 import pino from 'pino';
 import qrcode from 'qrcode-terminal';
+import QRCode from 'qrcode';
 import CommandHandler from './src/commands/CommandHandler.js';
+import WebServer from './webServer.js';
+
+// Initialiser le serveur web
+const webServer = new WebServer();
+webServer.start();
 
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
@@ -29,6 +35,11 @@ async function connectToWhatsApp() {
             console.log('\n📱 Scannez ce QR code avec WhatsApp:\n');
             qrcode.generate(qr, { small: true });
             console.log('\n⚠️ Le QR code expire après quelques secondes. Rechargez si nécessaire.\n');
+            
+            // Générer QR code pour l'interface web
+            QRCode.toDataURL(qr).then(qrDataUrl => {
+                webServer.setQRCode(qrDataUrl);
+            });
         }
 
         if (connection === 'close') {
@@ -46,6 +57,9 @@ async function connectToWhatsApp() {
             console.log('✅ Connecté à WhatsApp!');
             console.log('🏴‍☠️ Bot ONE PIECE: NOUVELLE ÈRE actif!');
             console.log('📱 Envoyez !menu pour commencer');
+            
+            webServer.updateStatus(true);
+            webServer.updatePlayerCount();
         }
     });
 
@@ -59,6 +73,9 @@ async function connectToWhatsApp() {
         if (!messageText.startsWith('!')) return;
 
         console.log(`📨 Message reçu de ${message.key.remoteJid}: ${messageText}`);
+
+        webServer.incrementMessages();
+        webServer.addLog(`📨 Commande: ${messageText}`);
 
         await CommandHandler.handleCommand(sock, message);
     });
