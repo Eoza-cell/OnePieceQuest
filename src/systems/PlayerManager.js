@@ -1,6 +1,11 @@
-const fs = require('fs-extra');
-const path = require('path');
-const moment = require('moment');
+import fs from 'fs-extra';
+import path from 'path';
+import moment from 'moment';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 class PlayerManager {
     constructor() {
@@ -199,4 +204,4 @@ class PlayerManager {
     }
 }
 
-module.exports = new PlayerManager();
+export default new PlayerManager();

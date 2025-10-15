@@ -86,4 +86,4 @@ class RaceSystem {
     }
 }
 
-module.exports = new RaceSystem();
+export default new RaceSystem();

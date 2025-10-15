@@ -1,4 +1,4 @@
-const PlayerManager = require('./PlayerManager');
+import PlayerManager from './PlayerManager.js';
 
 class CombatSystem {
     constructor() {
@@ -135,4 +135,4 @@ class CombatSystem {
     }
 }
 
-module.exports = new CombatSystem();
+export default new CombatSystem();

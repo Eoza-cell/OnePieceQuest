@@ -1,7 +1,7 @@
-const PlayerManager = require('../systems/PlayerManager');
-const RaceSystem = require('../systems/RaceSystem');
-const ZoneSystem = require('../systems/ZoneSystem');
-const CombatSystem = require('../systems/CombatSystem');
+import PlayerManager from '../systems/PlayerManager.js';
+import RaceSystem from '../systems/RaceSystem.js';
+import ZoneSystem from '../systems/ZoneSystem.js';
+import CombatSystem from '../systems/CombatSystem.js';
 
 class CommandHandler {
     constructor() {
@@ -517,4 +517,4 @@ Respectez les règles et jouez fair-play!`;
     }
 }
 
-module.exports = new CommandHandler();
+export default new CommandHandler();

@@ -78,4 +78,4 @@ class ZoneSystem {
     }
 }
 
-module.exports = new ZoneSystem();
+export default new ZoneSystem();

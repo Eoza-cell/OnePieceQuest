@@ -1,10 +1,9 @@
-const makeWASocket = require('@whiskeysockets/baileys').default;
-const { useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
-const pino = require('pino');
-const NodeCache = require('node-cache');
-const qrcode = require('qrcode-terminal');
-const CommandHandler = require('./src/commands/CommandHandler');
+import makeWASocket, { useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
+import { Boom } from '@hapi/boom';
+import pino from 'pino';
+import NodeCache from 'node-cache';
+import qrcode from 'qrcode-terminal';
+import CommandHandler from './src/commands/CommandHandler.js';
 
 const msgRetryCounterCache = new NodeCache();
 
@@ -86,7 +85,8 @@ console.log(`
 ║                                        ║
 ║   🏴‍☠️  ONE PIECE: NOUVELLE ÈRE  🏴‍☠️    ║
 ║                                        ║
-║     Bot WhatsApp RPG - v1.0.0          ║
+║     Bot WhatsApp RPG - v2.0.0          ║
+║         (Baileys v7.0.0-rc.5)          ║
 ║                                        ║
 ╚════════════════════════════════════════╝
 
