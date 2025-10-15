@@ -1,3 +1,4 @@
+
 import PlayerManager from '../systems/PlayerManager.js';
 import RaceSystem from '../systems/RaceSystem.js';
 import ZoneSystem from '../systems/ZoneSystem.js';
@@ -30,7 +31,6 @@ class CommandHandler {
     async handleCommand(client, message) {
         const jid = message.key.remoteJid;
         
-        // Extraire le texte du message (support multiple formats)
         const text = message.message?.conversation || 
                      message.message?.extendedTextMessage?.text ||
                      message.message?.imageMessage?.caption ||
@@ -50,20 +50,19 @@ class CommandHandler {
             return;
         }
 
-        // Utiliser l'ID du sender pour les données joueur
         const senderId = message.key.participant || jid;
         await PlayerManager.regenerateEnergy(senderId);
 
         try {
-            await this.commands[commandName](client, senderId, args);
-            console.log(`✅ Commande ${commandName} exécutée pour ${senderId}`);
+            await this.commands[commandName](client, senderId, args, jid);
+            console.log(`✅ Commande ${commandName} exécutée pour ${senderId}, réponse → ${jid}`);
         } catch (error) {
             console.error(`❌ Erreur commande ${commandName}:`, error);
             await CommandHandler.sendMessage(client, jid, '❌ Une erreur est survenue. Réessayez plus tard.');
         }
     }
 
-    async handleMenu(client, sender) {
+    async handleMenu(client, sender, args, replyTo) {
         const menuText = `🏴‍☠️ *ONE PIECE: NOUVELLE ÈRE* 🏴‍☠️
 
 *═══ COMMANDES PRINCIPALES ═══*
@@ -93,14 +92,14 @@ ${this.prefix}combat [@joueur] - Défier un joueur
 
 _Dans un monde où les mers n'ont pas de fin, seule la volonté forge les légendes._`;
 
-        await CommandHandler.sendMessage(client, sender, menuText);
+        await CommandHandler.sendMessage(client, replyTo, menuText);
     }
 
-    async handleStart(client, sender) {
+    async handleStart(client, sender, args, replyTo) {
         const player = PlayerManager.getPlayer(sender);
 
         if (player) {
-            await CommandHandler.sendMessage(client, sender, `⚓ Vous avez déjà un personnage!\n\nUtilisez ${this.prefix}profil pour voir vos stats.`);
+            await CommandHandler.sendMessage(client, replyTo, `⚓ Vous avez déjà un personnage!\n\nUtilisez ${this.prefix}profil pour voir vos stats.`);
             return;
         }
 
@@ -124,19 +123,19 @@ ${RaceSystem.getRacesList()}
 
 Choisissez votre race avec soin, elle influencera votre aventure!`;
 
-        await CommandHandler.sendMessage(client, sender, welcomeText);
+        await CommandHandler.sendMessage(client, replyTo, welcomeText);
     }
 
-    async handleCreate(client, sender, args) {
+    async handleCreate(client, sender, args, replyTo) {
         const player = PlayerManager.getPlayer(sender);
 
         if (player) {
-            await CommandHandler.sendMessage(client, sender, '⚓ Vous avez déjà un personnage!');
+            await CommandHandler.sendMessage(client, replyTo, '⚓ Vous avez déjà un personnage!');
             return;
         }
 
         if (args.length < 2) {
-            await CommandHandler.sendMessage(client, sender, `❌ Usage: ${this.prefix}creer [nom] [race]\n\nExemple: ${this.prefix}creer Luffy Humain\n\nUtilisez ${this.prefix}races pour voir les races disponibles.`);
+            await CommandHandler.sendMessage(client, replyTo, `❌ Usage: ${this.prefix}creer [nom] [race]\n\nExemple: ${this.prefix}creer Luffy Humain\n\nUtilisez ${this.prefix}races pour voir les races disponibles.`);
             return;
         }
 
@@ -145,7 +144,7 @@ Choisissez votre race avec soin, elle influencera votre aventure!`;
         const race = RaceSystem.getRace(raceName);
 
         if (!race) {
-            await CommandHandler.sendMessage(client, sender, `❌ Race inconnue: ${raceName}\n\nUtilisez ${this.prefix}races pour voir les races disponibles.`);
+            await CommandHandler.sendMessage(client, replyTo, `❌ Race inconnue: ${raceName}\n\nUtilisez ${this.prefix}races pour voir les races disponibles.`);
             return;
         }
 
@@ -177,14 +176,14 @@ ${race.emoji} *${name}* - ${raceName}
 Votre aventure commence maintenant!
 Utilisez ${this.prefix}menu pour voir toutes les commandes disponibles.`;
 
-        await CommandHandler.sendMessage(client, sender, creationText);
+        await CommandHandler.sendMessage(client, replyTo, creationText);
     }
 
-    async handleProfile(client, sender) {
+    async handleProfile(client, sender, args, replyTo) {
         const player = PlayerManager.getPlayer(sender);
 
         if (!player) {
-            await CommandHandler.sendMessage(client, sender, `❌ Vous n'avez pas encore de personnage!\n\nUtilisez ${this.prefix}start pour commencer.`);
+            await CommandHandler.sendMessage(client, replyTo, `❌ Vous n'avez pas encore de personnage!\n\nUtilisez ${this.prefix}start pour commencer.`);
             return;
         }
 
@@ -222,14 +221,14 @@ ${zone.emoji} ${player.zone}
 
 Utilisez ${this.prefix}stats pour plus de détails!`;
 
-        await CommandHandler.sendMessage(client, sender, profileText);
+        await CommandHandler.sendMessage(client, replyTo, profileText);
     }
 
-    async handleStats(client, sender) {
+    async handleStats(client, sender, args, replyTo) {
         const player = PlayerManager.getPlayer(sender);
 
         if (!player) {
-            await CommandHandler.sendMessage(client, sender, `❌ Vous n'avez pas encore de personnage!`);
+            await CommandHandler.sendMessage(client, replyTo, `❌ Vous n'avez pas encore de personnage!`);
             return;
         }
 
@@ -261,10 +260,10 @@ Utilisez ${this.prefix}stats pour plus de détails!`;
 
 Continuez à vous entraîner pour devenir plus fort!`;
 
-        await CommandHandler.sendMessage(client, sender, statsText);
+        await CommandHandler.sendMessage(client, replyTo, statsText);
     }
 
-    async handleRaces(client, sender) {
+    async handleRaces(client, sender, args, replyTo) {
         const racesText = `👥 *RACES JOUABLES* 👥
 
 ${RaceSystem.getRacesList()}
@@ -276,10 +275,10 @@ ${this.prefix}creer [nom] [race]
 
 Exemple: ${this.prefix}creer Zoro Humain`;
 
-        await CommandHandler.sendMessage(client, sender, racesText);
+        await CommandHandler.sendMessage(client, replyTo, racesText);
     }
 
-    async handleZones(client, sender) {
+    async handleZones(client, sender, args, replyTo) {
         const zonesText = `🗺️ *ZONES DU MONDE* 🗺️
 
 ${ZoneSystem.getZonesList()}
@@ -291,19 +290,19 @@ ${this.prefix}voyage [zone]
 
 Exemple: ${this.prefix}voyage Grand Line`;
 
-        await CommandHandler.sendMessage(client, sender, zonesText);
+        await CommandHandler.sendMessage(client, replyTo, zonesText);
     }
 
-    async handleTravel(client, sender, args) {
+    async handleTravel(client, sender, args, replyTo) {
         const player = PlayerManager.getPlayer(sender);
 
         if (!player) {
-            await CommandHandler.sendMessage(client, sender, `❌ Vous n'avez pas encore de personnage!`);
+            await CommandHandler.sendMessage(client, replyTo, `❌ Vous n'avez pas encore de personnage!`);
             return;
         }
 
         if (args.length === 0) {
-            await CommandHandler.sendMessage(client, sender, `❌ Usage: ${this.prefix}voyage [zone]\n\nUtilisez ${this.prefix}zones pour voir les zones disponibles.`);
+            await CommandHandler.sendMessage(client, replyTo, `❌ Usage: ${this.prefix}voyage [zone]\n\nUtilisez ${this.prefix}zones pour voir les zones disponibles.`);
             return;
         }
 
@@ -311,31 +310,31 @@ Exemple: ${this.prefix}voyage Grand Line`;
         const zone = ZoneSystem.getZone(zoneName);
 
         if (!zone) {
-            await CommandHandler.sendMessage(client, sender, `❌ Zone inconnue: ${zoneName}`);
+            await CommandHandler.sendMessage(client, replyTo, `❌ Zone inconnue: ${zoneName}`);
             return;
         }
 
         const access = ZoneSystem.canAccessZone(player.level, zoneName);
         if (!access.access) {
-            await CommandHandler.sendMessage(client, sender, `⚠️ Accès refusé!\n\n${access.reason}`);
+            await CommandHandler.sendMessage(client, replyTo, `⚠️ Accès refusé!\n\n${access.reason}`);
             return;
         }
 
         await PlayerManager.updatePlayer(sender, { zone: zoneName });
 
-        await CommandHandler.sendMessage(client, sender, `🌊 *VOYAGE RÉUSSI!* 🌊\n\nVous êtes maintenant dans: ${zone.emoji} *${zoneName}*\n\n${zone.description}\n\n⚠️ Dangers: ${zone.dangers}\n🎁 Récompenses: ${zone.rewards}`);
+        await CommandHandler.sendMessage(client, replyTo, `🌊 *VOYAGE RÉUSSI!* 🌊\n\nVous êtes maintenant dans: ${zone.emoji} *${zoneName}*\n\n${zone.description}\n\n⚠️ Dangers: ${zone.dangers}\n🎁 Récompenses: ${zone.rewards}`);
     }
 
-    async handleTraining(client, sender, args) {
+    async handleTraining(client, sender, args, replyTo) {
         const player = PlayerManager.getPlayer(sender);
 
         if (!player) {
-            await CommandHandler.sendMessage(client, sender, `❌ Vous n'avez pas encore de personnage!`);
+            await CommandHandler.sendMessage(client, replyTo, `❌ Vous n'avez pas encore de personnage!`);
             return;
         }
 
         if (args.length === 0) {
-            await CommandHandler.sendMessage(client, sender, `❌ Usage: ${this.prefix}entrainement [attribut]\n\nAttributs disponibles: force, vitesse, intelligence, reflexe\n\nExemple: ${this.prefix}entrainement force`);
+            await CommandHandler.sendMessage(client, replyTo, `❌ Usage: ${this.prefix}entrainement [attribut]\n\nAttributs disponibles: force, vitesse, intelligence, reflexe\n\nExemple: ${this.prefix}entrainement force`);
             return;
         }
 
@@ -343,13 +342,13 @@ Exemple: ${this.prefix}voyage Grand Line`;
         const validAttributes = ['force', 'vitesse', 'intelligence', 'reflexe'];
 
         if (!validAttributes.includes(attributeType)) {
-            await CommandHandler.sendMessage(client, sender, `❌ Attribut invalide!\n\nAttributs disponibles: ${validAttributes.join(', ')}`);
+            await CommandHandler.sendMessage(client, replyTo, `❌ Attribut invalide!\n\nAttributs disponibles: ${validAttributes.join(', ')}`);
             return;
         }
 
         const energyCost = 10;
         if (!await PlayerManager.consumeEnergy(sender, energyCost)) {
-            await CommandHandler.sendMessage(client, sender, `⚠️ Énergie insuffisante!\n\nVous avez besoin de ${energyCost} énergie.\nÉnergie actuelle: ${player.currentEnergy}/${player.maxEnergy}\n\n💤 L'énergie se régénère de 10 par minute.`);
+            await CommandHandler.sendMessage(client, replyTo, `⚠️ Énergie insuffisante!\n\nVous avez besoin de ${energyCost} énergie.\nÉnergie actuelle: ${player.currentEnergy}/${player.maxEnergy}\n\n💤 L'énergie se régénère de 10 par minute.`);
             return;
         }
 
@@ -379,14 +378,14 @@ Exemple: ${this.prefix}voyage Grand Line`;
         resultText += `⚡ Énergie: ${updatedPlayer.currentEnergy}/${updatedPlayer.maxEnergy}\n`;
         resultText += `⭐ XP: ${updatedPlayer.xp}/${PlayerManager.getXPForLevel(updatedPlayer.level + 1)}`;
 
-        await CommandHandler.sendMessage(client, sender, resultText);
+        await CommandHandler.sendMessage(client, replyTo, resultText);
     }
 
-    async handleCombat(client, sender, args) {
-        await CommandHandler.sendMessage(client, sender, `⚔️ *SYSTÈME DE COMBAT* ⚔️\n\nLe système de combat entre joueurs sera disponible prochainement!\n\nPour l'instant, entraînez-vous avec ${this.prefix}entrainement pour devenir plus fort!`);
+    async handleCombat(client, sender, args, replyTo) {
+        await CommandHandler.sendMessage(client, replyTo, `⚔️ *SYSTÈME DE COMBAT* ⚔️\n\nLe système de combat entre joueurs sera disponible prochainement!\n\nPour l'instant, entraînez-vous avec ${this.prefix}entrainement pour devenir plus fort!`);
     }
 
-    async handleHelp(client, sender) {
+    async handleHelp(client, sender, args, replyTo) {
         const helpText = `📖 *GUIDE D'AIDE* 📖
 
 *═══ COMMANDES DE BASE ═══*
@@ -413,10 +412,10 @@ ${this.prefix}attributs - Explication attributs
 
 Pour toute question, relisez les règles!`;
 
-        await CommandHandler.sendMessage(client, sender, helpText);
+        await CommandHandler.sendMessage(client, replyTo, helpText);
     }
 
-    async handleRules(client, sender) {
+    async handleRules(client, sender, args, replyTo) {
         const rulesText = `📜 *RÈGLES DU JEU* 📜
 
 *═══ PROGRESSION ═══*
@@ -448,10 +447,10 @@ Pour toute question, relisez les règles!`;
 
 Respectez les règles et jouez fair-play!`;
 
-        await CommandHandler.sendMessage(client, sender, rulesText);
+        await CommandHandler.sendMessage(client, replyTo, rulesText);
     }
 
-    async handleAttributes(client, sender) {
+    async handleAttributes(client, sender, args, replyTo) {
         const attributesText = `📊 *GUIDE DES ATTRIBUTS* 📊
 
 *⚡ FORCE*
@@ -492,7 +491,7 @@ Respectez les règles et jouez fair-play!`;
 
 *═══════════════════════*`;
 
-        await CommandHandler.sendMessage(client, sender, attributesText);
+        await CommandHandler.sendMessage(client, replyTo, attributesText);
     }
 
     static async sendMessage(sock, jid, text) {
@@ -501,7 +500,6 @@ Respectez les règles et jouez fair-play!`;
             console.log(`✉️ Message envoyé à ${jid}`);
         } catch (error) {
             console.error('❌ Erreur envoi message:', error);
-            console.error('Details:', error);
         }
     }
 }
