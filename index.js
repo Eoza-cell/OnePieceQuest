@@ -15,7 +15,11 @@ async function connectToWhatsApp() {
         logger: pino({ level: 'silent' }),
         msgRetryCounterCache,
         generateHighQualityLinkPreview: true,
-        defaultQueryTimeoutMs: undefined
+        defaultQueryTimeoutMs: undefined,
+        printQRInTerminal: false,
+        browser: ['ONE PIECE Bot', 'Chrome', '120.0.0'],
+        syncFullHistory: false,
+        markOnlineOnConnect: true
     });
 
     sock.ev.on('creds.update', saveCreds);
