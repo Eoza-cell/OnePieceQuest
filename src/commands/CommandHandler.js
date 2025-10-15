@@ -482,8 +482,12 @@ Respectez les règles et jouez fair-play!`;
         await CommandHandler.sendMessage(client, sender, attributesText);
     }
 
-    static async sendMessage(client, chatId, text) {
-        await client.sendMessage(chatId, { text });
+    static async sendMessage(sock, jid, text) {
+        try {
+            await sock.sendMessage(jid, { text: text });
+        } catch (error) {
+            console.error('Erreur envoi message:', error);
+        }
     }
 }
 
