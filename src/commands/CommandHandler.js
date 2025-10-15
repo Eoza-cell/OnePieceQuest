@@ -27,8 +27,8 @@ class CommandHandler {
         };
     }
 
-    async handleCommand(sock, message) {
-        const sender = message.key.remoteJid;
+    async handleCommand(client, message) {
+        const jid = message.key.remoteJid;
         const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
 
         if (!text.startsWith(this.prefix)) return;
@@ -40,19 +40,17 @@ class CommandHandler {
             return;
         }
 
-        await PlayerManager.regenerateEnergy(sender);
+        await PlayerManager.regenerateEnergy(jid);
 
         try {
-            await this.commands[commandName](sock, sender, args);
+            await this.commands[commandName](client, jid, args);
         } catch (error) {
             console.error(`Erreur commande ${commandName}:`, error);
-            await sock.sendMessage(sender, {
-                text: '❌ Une erreur est survenue. Réessayez plus tard.'
-            });
+            await CommandHandler.sendMessage(client, jid, '❌ Une erreur est survenue. Réessayez plus tard.');
         }
     }
 
-    async handleMenu(sock, sender) {
+    async handleMenu(client, sender) {
         const menuText = `🏴‍☠️ *ONE PIECE: NOUVELLE ÈRE* 🏴‍☠️
 
 *═══ COMMANDES PRINCIPALES ═══*
@@ -82,16 +80,14 @@ ${this.prefix}combat [@joueur] - Défier un joueur
 
 _Dans un monde où les mers n'ont pas de fin, seule la volonté forge les légendes._`;
 
-        await sock.sendMessage(sender, { text: menuText });
+        await CommandHandler.sendMessage(client, sender, menuText);
     }
 
-    async handleStart(sock, sender) {
+    async handleStart(client, sender) {
         const player = PlayerManager.getPlayer(sender);
-        
+
         if (player) {
-            await sock.sendMessage(sender, {
-                text: `⚓ Vous avez déjà un personnage!\n\nUtilisez ${this.prefix}profil pour voir vos stats.`
-            });
+            await CommandHandler.sendMessage(client, sender, `⚓ Vous avez déjà un personnage!\n\nUtilisez ${this.prefix}profil pour voir vos stats.`);
             return;
         }
 
@@ -115,23 +111,19 @@ ${RaceSystem.getRacesList()}
 
 Choisissez votre race avec soin, elle influencera votre aventure!`;
 
-        await sock.sendMessage(sender, { text: welcomeText });
+        await CommandHandler.sendMessage(client, sender, welcomeText);
     }
 
-    async handleCreate(sock, sender, args) {
+    async handleCreate(client, sender, args) {
         const player = PlayerManager.getPlayer(sender);
-        
+
         if (player) {
-            await sock.sendMessage(sender, {
-                text: '⚓ Vous avez déjà un personnage!'
-            });
+            await CommandHandler.sendMessage(client, sender, '⚓ Vous avez déjà un personnage!');
             return;
         }
 
         if (args.length < 2) {
-            await sock.sendMessage(sender, {
-                text: `❌ Usage: ${this.prefix}creer [nom] [race]\n\nExemple: ${this.prefix}creer Luffy Humain\n\nUtilisez ${this.prefix}races pour voir les races disponibles.`
-            });
+            await CommandHandler.sendMessage(client, sender, `❌ Usage: ${this.prefix}creer [nom] [race]\n\nExemple: ${this.prefix}creer Luffy Humain\n\nUtilisez ${this.prefix}races pour voir les races disponibles.`);
             return;
         }
 
@@ -140,9 +132,7 @@ Choisissez votre race avec soin, elle influencera votre aventure!`;
         const race = RaceSystem.getRace(raceName);
 
         if (!race) {
-            await sock.sendMessage(sender, {
-                text: `❌ Race inconnue: ${raceName}\n\nUtilisez ${this.prefix}races pour voir les races disponibles.`
-            });
+            await CommandHandler.sendMessage(client, sender, `❌ Race inconnue: ${raceName}\n\nUtilisez ${this.prefix}races pour voir les races disponibles.`);
             return;
         }
 
@@ -174,16 +164,14 @@ ${race.emoji} *${name}* - ${raceName}
 Votre aventure commence maintenant!
 Utilisez ${this.prefix}menu pour voir toutes les commandes disponibles.`;
 
-        await sock.sendMessage(sender, { text: creationText });
+        await CommandHandler.sendMessage(client, sender, creationText);
     }
 
-    async handleProfile(sock, sender) {
+    async handleProfile(client, sender) {
         const player = PlayerManager.getPlayer(sender);
-        
+
         if (!player) {
-            await sock.sendMessage(sender, {
-                text: `❌ Vous n'avez pas encore de personnage!\n\nUtilisez ${this.prefix}start pour commencer.`
-            });
+            await CommandHandler.sendMessage(client, sender, `❌ Vous n'avez pas encore de personnage!\n\nUtilisez ${this.prefix}start pour commencer.`);
             return;
         }
 
@@ -221,16 +209,14 @@ ${zone.emoji} ${player.zone}
 
 Utilisez ${this.prefix}stats pour plus de détails!`;
 
-        await sock.sendMessage(sender, { text: profileText });
+        await CommandHandler.sendMessage(client, sender, profileText);
     }
 
-    async handleStats(sock, sender) {
+    async handleStats(client, sender) {
         const player = PlayerManager.getPlayer(sender);
-        
+
         if (!player) {
-            await sock.sendMessage(sender, {
-                text: `❌ Vous n'avez pas encore de personnage!`
-            });
+            await CommandHandler.sendMessage(client, sender, `❌ Vous n'avez pas encore de personnage!`);
             return;
         }
 
@@ -262,10 +248,10 @@ Utilisez ${this.prefix}stats pour plus de détails!`;
 
 Continuez à vous entraîner pour devenir plus fort!`;
 
-        await sock.sendMessage(sender, { text: statsText });
+        await CommandHandler.sendMessage(client, sender, statsText);
     }
 
-    async handleRaces(sock, sender) {
+    async handleRaces(client, sender) {
         const racesText = `👥 *RACES JOUABLES* 👥
 
 ${RaceSystem.getRacesList()}
@@ -277,10 +263,10 @@ ${this.prefix}creer [nom] [race]
 
 Exemple: ${this.prefix}creer Zoro Humain`;
 
-        await sock.sendMessage(sender, { text: racesText });
+        await CommandHandler.sendMessage(client, sender, racesText);
     }
 
-    async handleZones(sock, sender) {
+    async handleZones(client, sender) {
         const zonesText = `🗺️ *ZONES DU MONDE* 🗺️
 
 ${ZoneSystem.getZonesList()}
@@ -292,23 +278,19 @@ ${this.prefix}voyage [zone]
 
 Exemple: ${this.prefix}voyage Grand Line`;
 
-        await sock.sendMessage(sender, { text: zonesText });
+        await CommandHandler.sendMessage(client, sender, zonesText);
     }
 
-    async handleTravel(sock, sender, args) {
+    async handleTravel(client, sender, args) {
         const player = PlayerManager.getPlayer(sender);
-        
+
         if (!player) {
-            await sock.sendMessage(sender, {
-                text: `❌ Vous n'avez pas encore de personnage!`
-            });
+            await CommandHandler.sendMessage(client, sender, `❌ Vous n'avez pas encore de personnage!`);
             return;
         }
 
         if (args.length === 0) {
-            await sock.sendMessage(sender, {
-                text: `❌ Usage: ${this.prefix}voyage [zone]\n\nUtilisez ${this.prefix}zones pour voir les zones disponibles.`
-            });
+            await CommandHandler.sendMessage(client, sender, `❌ Usage: ${this.prefix}voyage [zone]\n\nUtilisez ${this.prefix}zones pour voir les zones disponibles.`);
             return;
         }
 
@@ -316,41 +298,31 @@ Exemple: ${this.prefix}voyage Grand Line`;
         const zone = ZoneSystem.getZone(zoneName);
 
         if (!zone) {
-            await sock.sendMessage(sender, {
-                text: `❌ Zone inconnue: ${zoneName}`
-            });
+            await CommandHandler.sendMessage(client, sender, `❌ Zone inconnue: ${zoneName}`);
             return;
         }
 
         const access = ZoneSystem.canAccessZone(player.level, zoneName);
         if (!access.access) {
-            await sock.sendMessage(sender, {
-                text: `⚠️ Accès refusé!\n\n${access.reason}`
-            });
+            await CommandHandler.sendMessage(client, sender, `⚠️ Accès refusé!\n\n${access.reason}`);
             return;
         }
 
         await PlayerManager.updatePlayer(sender, { zone: zoneName });
 
-        await sock.sendMessage(sender, {
-            text: `🌊 *VOYAGE RÉUSSI!* 🌊\n\nVous êtes maintenant dans: ${zone.emoji} *${zoneName}*\n\n${zone.description}\n\n⚠️ Dangers: ${zone.dangers}\n🎁 Récompenses: ${zone.rewards}`
-        });
+        await CommandHandler.sendMessage(client, sender, `🌊 *VOYAGE RÉUSSI!* 🌊\n\nVous êtes maintenant dans: ${zone.emoji} *${zoneName}*\n\n${zone.description}\n\n⚠️ Dangers: ${zone.dangers}\n🎁 Récompenses: ${zone.rewards}`);
     }
 
-    async handleTraining(sock, sender, args) {
+    async handleTraining(client, sender, args) {
         const player = PlayerManager.getPlayer(sender);
-        
+
         if (!player) {
-            await sock.sendMessage(sender, {
-                text: `❌ Vous n'avez pas encore de personnage!`
-            });
+            await CommandHandler.sendMessage(client, sender, `❌ Vous n'avez pas encore de personnage!`);
             return;
         }
 
         if (args.length === 0) {
-            await sock.sendMessage(sender, {
-                text: `❌ Usage: ${this.prefix}entrainement [attribut]\n\nAttributs disponibles: force, vitesse, intelligence, reflexe\n\nExemple: ${this.prefix}entrainement force`
-            });
+            await CommandHandler.sendMessage(client, sender, `❌ Usage: ${this.prefix}entrainement [attribut]\n\nAttributs disponibles: force, vitesse, intelligence, reflexe\n\nExemple: ${this.prefix}entrainement force`);
             return;
         }
 
@@ -358,17 +330,13 @@ Exemple: ${this.prefix}voyage Grand Line`;
         const validAttributes = ['force', 'vitesse', 'intelligence', 'reflexe'];
 
         if (!validAttributes.includes(attributeType)) {
-            await sock.sendMessage(sender, {
-                text: `❌ Attribut invalide!\n\nAttributs disponibles: ${validAttributes.join(', ')}`
-            });
+            await CommandHandler.sendMessage(client, sender, `❌ Attribut invalide!\n\nAttributs disponibles: ${validAttributes.join(', ')}`);
             return;
         }
 
         const energyCost = 10;
         if (!await PlayerManager.consumeEnergy(sender, energyCost)) {
-            await sock.sendMessage(sender, {
-                text: `⚠️ Énergie insuffisante!\n\nVous avez besoin de ${energyCost} énergie.\nÉnergie actuelle: ${player.currentEnergy}/${player.maxEnergy}\n\n💤 L'énergie se régénère de 10 par minute.`
-            });
+            await CommandHandler.sendMessage(client, sender, `⚠️ Énergie insuffisante!\n\nVous avez besoin de ${energyCost} énergie.\nÉnergie actuelle: ${player.currentEnergy}/${player.maxEnergy}\n\n💤 L'énergie se régénère de 10 par minute.`);
             return;
         }
 
@@ -398,16 +366,14 @@ Exemple: ${this.prefix}voyage Grand Line`;
         resultText += `⚡ Énergie: ${updatedPlayer.currentEnergy}/${updatedPlayer.maxEnergy}\n`;
         resultText += `⭐ XP: ${updatedPlayer.xp}/${PlayerManager.getXPForLevel(updatedPlayer.level + 1)}`;
 
-        await sock.sendMessage(sender, { text: resultText });
+        await CommandHandler.sendMessage(client, sender, resultText);
     }
 
-    async handleCombat(sock, sender, args) {
-        await sock.sendMessage(sender, {
-            text: `⚔️ *SYSTÈME DE COMBAT* ⚔️\n\nLe système de combat entre joueurs sera disponible prochainement!\n\nPour l'instant, entraînez-vous avec ${this.prefix}entrainement pour devenir plus fort!`
-        });
+    async handleCombat(client, sender, args) {
+        await CommandHandler.sendMessage(client, sender, `⚔️ *SYSTÈME DE COMBAT* ⚔️\n\nLe système de combat entre joueurs sera disponible prochainement!\n\nPour l'instant, entraînez-vous avec ${this.prefix}entrainement pour devenir plus fort!`);
     }
 
-    async handleHelp(sock, sender) {
+    async handleHelp(client, sender) {
         const helpText = `📖 *GUIDE D'AIDE* 📖
 
 *═══ COMMANDES DE BASE ═══*
@@ -434,10 +400,10 @@ ${this.prefix}attributs - Explication attributs
 
 Pour toute question, relisez les règles!`;
 
-        await sock.sendMessage(sender, { text: helpText });
+        await CommandHandler.sendMessage(client, sender, helpText);
     }
 
-    async handleRules(sock, sender) {
+    async handleRules(client, sender) {
         const rulesText = `📜 *RÈGLES DU JEU* 📜
 
 *═══ PROGRESSION ═══*
@@ -469,10 +435,10 @@ Pour toute question, relisez les règles!`;
 
 Respectez les règles et jouez fair-play!`;
 
-        await sock.sendMessage(sender, { text: rulesText });
+        await CommandHandler.sendMessage(client, sender, rulesText);
     }
 
-    async handleAttributes(sock, sender) {
+    async handleAttributes(client, sender) {
         const attributesText = `📊 *GUIDE DES ATTRIBUTS* 📊
 
 *⚡ FORCE*
@@ -513,7 +479,11 @@ Respectez les règles et jouez fair-play!`;
 
 *═══════════════════════*`;
 
-        await sock.sendMessage(sender, { text: attributesText });
+        await CommandHandler.sendMessage(client, sender, attributesText);
+    }
+
+    static async sendMessage(client, chatId, text) {
+        await client.sendMessage(chatId, { text });
     }
 }
 

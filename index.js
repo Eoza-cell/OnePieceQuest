@@ -1,88 +1,73 @@
-import makeWASocket, { useMultiFileAuthState, DisconnectReason } from 'baileys';
-import { Boom } from '@hapi/boom';
-import pino from 'pino';
-import NodeCache from 'node-cache';
+import pkg from 'whatsapp-web.js';
+const { Client, LocalAuth } = pkg;
 import qrcode from 'qrcode-terminal';
 import CommandHandler from './src/commands/CommandHandler.js';
 
-const msgRetryCounterCache = new NodeCache();
+const client = new Client({
+    authStrategy: new LocalAuth({
+        dataPath: './auth_info'
+    }),
+    puppeteer: {
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu'
+        ]
+    }
+});
 
-async function connectToWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+client.on('qr', (qr) => {
+    console.log('\n📱 Scannez ce QR code avec WhatsApp:\n');
+    qrcode.generate(qr, { small: true });
+    console.log('\n⚠️ Le QR code expire après quelques secondes. Rechargez si nécessaire.\n');
+});
 
-    const sock = makeWASocket({
-        auth: state,
-        logger: pino({ level: 'silent' }),
-        msgRetryCounterCache,
-        generateHighQualityLinkPreview: true,
-        defaultQueryTimeoutMs: undefined,
-        printQRInTerminal: false,
-        browser: ['ONE PIECE Bot', 'Chrome', '120.0.0'],
-        syncFullHistory: false,
-        markOnlineOnConnect: true
-    });
+client.on('ready', () => {
+    console.log('✅ Connecté à WhatsApp!');
+    console.log('🏴‍☠️ Bot ONE PIECE: NOUVELLE ÈRE actif!');
+    console.log('📱 Envoyez !menu pour commencer');
+});
 
-    sock.ev.on('creds.update', saveCreds);
+client.on('authenticated', () => {
+    console.log('🔐 Authentification réussie!');
+});
 
-    sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        
-        if (qr) {
-            console.log('\n📱 Scannez ce QR code avec WhatsApp:\n');
-            qrcode.generate(qr, { small: true });
-            console.log('\n⚠️ Le QR code expire après quelques secondes. Rechargez si nécessaire.\n');
+client.on('auth_failure', (msg) => {
+    console.error('❌ Échec d\'authentification:', msg);
+});
+
+client.on('disconnected', (reason) => {
+    console.log('🔌 Déconnecté:', reason);
+    console.log('🔄 Redémarrage...');
+    client.initialize();
+});
+
+client.on('message', async (message) => {
+    const messageText = message.body;
+
+    if (!messageText.startsWith('!')) return;
+
+    console.log(`📨 Message reçu de ${message.from}: ${messageText}`);
+
+    // Adapter le message au format CommandHandler
+    const adaptedMessage = {
+        key: {
+            remoteJid: message.from,
+            fromMe: message.fromMe,
+            id: message.id._serialized
+        },
+        message: {
+            conversation: messageText
         }
-        
-        if (connection === 'close') {
-            const shouldReconnect = lastDisconnect?.error instanceof Boom
-                ? lastDisconnect.error.output?.statusCode !== DisconnectReason.loggedOut
-                : true;
-            
-            console.log('🔌 Connexion fermée. Raison:', lastDisconnect?.error);
-            
-            if (shouldReconnect) {
-                console.log('🔄 Reconnexion...');
-                setTimeout(() => connectToWhatsApp(), 3000);
-            } else {
-                console.log('❌ Déconnecté. Supprimez le dossier auth_info et redémarrez.');
-            }
-        } else if (connection === 'open') {
-            console.log('✅ Connecté à WhatsApp!');
-            console.log('🏴‍☠️ Bot ONE PIECE: NOUVELLE ÈRE actif!');
-            console.log('📱 Envoyez !menu pour commencer');
-        }
-    });
+    };
 
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-        const message = messages[0];
-        
-        if (!message.message) return;
-        if (message.key.fromMe) return;
-
-        const messageText = message.message?.conversation 
-            || message.message?.extendedTextMessage?.text 
-            || '';
-
-        if (messageText.startsWith('!')) {
-            console.log(`📨 Message reçu de ${message.key.remoteJid}: ${messageText}`);
-            await CommandHandler.handleCommand(sock, message);
-        }
-    });
-
-    sock.ev.on('messages.update', async (updates) => {
-        for (const update of updates) {
-            if (update.update.status) {
-                console.log(`📧 Statut message: ${update.update.status}`);
-            }
-        }
-    });
-
-    sock.ev.on('presence.update', async (presence) => {
-        console.log(`👤 Présence: ${presence.id} - ${presence.presences?.[presence.id]?.lastKnownPresence}`);
-    });
-
-    return sock;
-}
+    await CommandHandler.handleCommand(client, adaptedMessage);
+});
 
 console.log(`
 ╔════════════════════════════════════════╗
@@ -90,14 +75,14 @@ console.log(`
 ║   🏴‍☠️  ONE PIECE: NOUVELLE ÈRE  🏴‍☠️    ║
 ║                                        ║
 ║     Bot WhatsApp RPG - v2.0.0          ║
-║         (Baileys v7.0.0-rc.5)          ║
+║      (WhatsApp Web.js - Stable)        ║
 ║                                        ║
 ╚════════════════════════════════════════╝
 
 ⚓ Démarrage du bot...
 `);
 
-connectToWhatsApp().catch(err => {
+client.initialize().catch(err => {
     console.error('❌ Erreur fatale:', err);
     process.exit(1);
 });
