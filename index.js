@@ -1,8 +1,8 @@
-import makeWASocket, { useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
+import makeWASocket, { useMultiFileAuthState, DisconnectReason } from 'baileys';
 import { Boom } from '@hapi/boom';
 import pino from 'pino';
 import NodeCache from 'node-cache';
-import QRCode from 'qrcode';
+import qrcode from 'qrcode-terminal';
 import CommandHandler from './src/commands/CommandHandler.js';
 
 const msgRetryCounterCache = new NodeCache();
@@ -29,7 +29,7 @@ async function connectToWhatsApp() {
         
         if (qr) {
             console.log('\n📱 Scannez ce QR code avec WhatsApp:\n');
-            console.log(await QRCode.toString(qr, { type: 'terminal' }));
+            qrcode.generate(qr, { small: true });
             console.log('\n⚠️ Le QR code expire après quelques secondes. Rechargez si nécessaire.\n');
         }
         
