@@ -29,23 +29,36 @@ class CommandHandler {
 
     async handleCommand(client, message) {
         const jid = message.key.remoteJid;
-        const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
+        
+        // Extraire le texte du message (support multiple formats)
+        const text = message.message?.conversation || 
+                     message.message?.extendedTextMessage?.text ||
+                     message.message?.imageMessage?.caption ||
+                     message.message?.videoMessage?.caption || '';
+
+        console.log(`📝 Texte extrait: "${text}"`);
 
         if (!text.startsWith(this.prefix)) return;
 
         const args = text.slice(this.prefix.length).trim().split(/\s+/);
         const commandName = args.shift().toLowerCase();
 
+        console.log(`🎯 Commande détectée: ${commandName}`);
+
         if (!this.commands[commandName]) {
+            console.log(`❌ Commande inconnue: ${commandName}`);
             return;
         }
 
-        await PlayerManager.regenerateEnergy(jid);
+        // Utiliser l'ID du sender pour les données joueur
+        const senderId = message.key.participant || jid;
+        await PlayerManager.regenerateEnergy(senderId);
 
         try {
-            await this.commands[commandName](client, jid, args);
+            await this.commands[commandName](client, senderId, args);
+            console.log(`✅ Commande ${commandName} exécutée pour ${senderId}`);
         } catch (error) {
-            console.error(`Erreur commande ${commandName}:`, error);
+            console.error(`❌ Erreur commande ${commandName}:`, error);
             await CommandHandler.sendMessage(client, jid, '❌ Une erreur est survenue. Réessayez plus tard.');
         }
     }
@@ -485,8 +498,10 @@ Respectez les règles et jouez fair-play!`;
     static async sendMessage(sock, jid, text) {
         try {
             await sock.sendMessage(jid, { text: text });
+            console.log(`✉️ Message envoyé à ${jid}`);
         } catch (error) {
-            console.error('Erreur envoi message:', error);
+            console.error('❌ Erreur envoi message:', error);
+            console.error('Details:', error);
         }
     }
 }
