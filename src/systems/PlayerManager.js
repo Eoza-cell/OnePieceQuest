@@ -73,7 +73,15 @@ class PlayerManager {
                 vitesse: 0,
                 intelligence: 0,
                 reflexe: 0
-            }
+            },
+            devilFruit: null,
+            devilFruitMastery: 0,
+            haki: {
+                kenbunshoku: { unlocked: false, level: 0 },
+                busoshoku: { unlocked: false, level: 0 },
+                haoshoku: { unlocked: false, level: 0 }
+            },
+            crewId: null
         };
 
         this.players[phoneNumber] = player;
@@ -96,7 +104,7 @@ class PlayerManager {
 
         const now = Date.now();
         const timePassed = Math.floor((now - player.lastEnergyRegen) / 60000);
-        
+
         if (timePassed > 0) {
             const regenAmount = timePassed * 10;
             player.currentEnergy = Math.min(player.maxEnergy, player.currentEnergy + regenAmount);
@@ -122,7 +130,7 @@ class PlayerManager {
         if (!player) return null;
 
         player.xp += xpAmount;
-        
+
         const xpNeeded = this.getXPForLevel(player.level + 1);
         const leveledUp = player.xp >= xpNeeded;
 
@@ -186,7 +194,7 @@ class PlayerManager {
         if (player.trainingCount[attributeType] >= needed) {
             player.trainingCount[attributeType] = 0;
             player.attributes[attributeType] += 1;
-            
+
             if (attributeType === 'endurance') {
                 player.maxEnergy = player.attributes.endurance * 10;
             }

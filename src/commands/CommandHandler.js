@@ -3,6 +3,9 @@ import PlayerManager from '../systems/PlayerManager.js';
 import RaceSystem from '../systems/RaceSystem.js';
 import ZoneSystem from '../systems/ZoneSystem.js';
 import CombatSystem from '../systems/CombatSystem.js';
+import DevilFruitSystem from '../systems/DevilFruitSystem.js';
+import HakiSystem from '../systems/HakiSystem.js';
+import CrewSystem from '../systems/CrewSystem.js';
 
 class CommandHandler {
     constructor() {
@@ -24,7 +27,15 @@ class CommandHandler {
             'combat': this.handleCombat.bind(this),
             'aide': this.handleHelp.bind(this),
             'regles': this.handleRules.bind(this),
-            'attributs': this.handleAttributes.bind(this)
+            'attributs': this.handleAttributes.bind(this),
+            'fruits': this.handleFruits.bind(this),
+            'manger': this.handleEatFruit.bind(this),
+            'haki': this.handleHaki.bind(this),
+            'debloquer': this.handleUnlockHaki.bind(this),
+            'equipage': this.handleCrew.bind(this),
+            'creerequipage': this.handleCreateCrew.bind(this),
+            'rejoindre': this.handleJoinCrew.bind(this),
+            'quitter': this.handleLeaveCrew.bind(this)
         };
     }
 
@@ -36,7 +47,7 @@ class CommandHandler {
                      message.message?.imageMessage?.caption ||
                      message.message?.videoMessage?.caption || '';
 
-        console.log(`📝 Texte extrait: "${text}"`);
+        console.log(`📝 Texte extrait: "${text}" de ${jid}`);
 
         if (!text.startsWith(this.prefix)) return;
 
@@ -50,17 +61,17 @@ class CommandHandler {
             return;
         }
 
-        // Utiliser l'ID du sender (en privé si groupe, sinon jid direct)
+        // ID du joueur = participant si groupe, sinon jid direct
         const senderId = message.key.participant || jid;
         
-        // Envoyer la réponse en PRIVÉ au joueur (pas dans le groupe)
-        const replyTo = senderId;
+        // RÉPONDRE DANS LE GROUPE (jid) mais avec l'ID du joueur (senderId)
+        const replyTo = jid; // ✅ Toujours répondre où le message a été envoyé
         
         await PlayerManager.regenerateEnergy(senderId);
 
         try {
             await this.commands[commandName](client, senderId, args, replyTo);
-            console.log(`✅ Commande ${commandName} exécutée pour ${senderId}, réponse → ${replyTo} (privé)`);
+            console.log(`✅ Commande ${commandName} - Joueur: ${senderId} - Réponse: ${replyTo}`);
         } catch (error) {
             console.error(`❌ Erreur commande ${commandName}:`, error);
             await CommandHandler.sendMessage(client, replyTo, '❌ Une erreur est survenue. Réessayez plus tard.');
@@ -76,26 +87,40 @@ class CommandHandler {
 ${this.prefix}menu - Affiche ce menu
 ${this.prefix}aide - Aide détaillée
 ${this.prefix}regles - Règles du jeu
-${this.prefix}attributs - Explication des attributs
 
 👤 *Personnage*
 ${this.prefix}start - Démarrer l'aventure
-${this.prefix}creer [nom] [race] - Créer un personnage
+${this.prefix}creer [nom] [race] - Créer personnage
 ${this.prefix}profil - Voir son profil
-${this.prefix}stats - Statistiques détaillées
+${this.prefix}stats - Statistiques
 
-📚 *Informations*
-${this.prefix}races - Liste des races
-${this.prefix}zones - Liste des zones
+🍎 *Fruits du Démon*
+${this.prefix}fruits - Liste des fruits
+${this.prefix}manger [fruit] - Manger un fruit
+
+⚡ *Haki*
+${this.prefix}haki - Types de Haki
+${this.prefix}debloquer [type] - Débloquer Haki
+
+⚓ *Équipages*
+${this.prefix}equipage - Voir son équipage
+${this.prefix}creerequipage [nom] - Créer équipage
+${this.prefix}rejoindre [id] - Rejoindre équipage
+${this.prefix}quitter - Quitter équipage
 
 🌍 *Actions*
-${this.prefix}voyage [zone] - Voyager vers une zone
+${this.prefix}voyage [zone] - Voyager
 ${this.prefix}entrainement [attribut] - S'entraîner
-${this.prefix}combat [@joueur] - Défier un joueur
+${this.prefix}combat [@joueur] - Combattre
+
+📚 *Infos*
+${this.prefix}races - Races disponibles
+${this.prefix}zones - Zones du monde
+${this.prefix}attributs - Guide attributs
 
 *═══════════════════════*
 
-_Dans un monde où les mers n'ont pas de fin, seule la volonté forge les légendes._`;
+_La volonté forge les légendes!_ 🏴‍☠️`;
 
         await CommandHandler.sendMessage(client, replyTo, menuText);
     }
@@ -285,6 +310,163 @@ Exemple: ${this.prefix}creer Zoro Humain`;
 
     async handleZones(client, sender, args, replyTo) {
         const zonesText = `🗺️ *ZONES DU MONDE* 🗺️
+
+
+
+    async handleFruits(client, sender, args, replyTo) {
+        const fruitsText = `🍎 *FRUITS DU DÉMON* 🍎\n\n${DevilFruitSystem.getFruitsList()}\n*═══════════════════════*\n\nPour manger un fruit:\n${this.prefix}manger [nom du fruit]\n\nExemple: ${this.prefix}manger Gomu Gomu no Mi`;
+        await CommandHandler.sendMessage(client, replyTo, fruitsText);
+    }
+
+    async handleEatFruit(client, sender, args, replyTo) {
+        const player = PlayerManager.getPlayer(sender);
+        if (!player) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Créez d'abord un personnage avec ${this.prefix}start`);
+            return;
+        }
+
+        if (player.devilFruit) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Vous avez déjà mangé le ${player.devilFruit}!`);
+            return;
+        }
+
+        const fruitName = args.join(' ');
+        const fruit = DevilFruitSystem.getFruit(fruitName);
+
+        if (!fruit) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Fruit inconnu! Utilisez ${this.prefix}fruits pour voir la liste.`);
+            return;
+        }
+
+        await PlayerManager.updatePlayer(sender, { 
+            devilFruit: fruitName,
+            devilFruitMastery: 0 
+        });
+
+        const updatedPlayer = PlayerManager.getPlayer(sender);
+        Object.keys(fruit.masteryBonus).forEach(attr => {
+            updatedPlayer.attributes[attr] += fruit.masteryBonus[attr];
+        });
+        await PlayerManager.updatePlayer(sender, updatedPlayer);
+
+        const eatText = `🍎 *FRUIT DU DÉMON MANGÉ!* 🍎\n\n${fruit.emoji} *${fruitName}*\n${fruit.description}\n\n*Type:* ${fruit.type}\n*Pouvoir:* ${fruit.power}/100\n\n*Capacités:*\n${fruit.abilities.map(a => `• ${a}`).join('\n')}\n\n*Faiblesses:*\n${fruit.weakness}\n\n*Bonus Maîtrise:*\n${Object.entries(fruit.masteryBonus).map(([k,v]) => `+${v} ${k}`).join(', ')}\n\n⚠️ Vous ne pouvez plus nager!`;
+
+        await CommandHandler.sendMessage(client, replyTo, eatText);
+    }
+
+    async handleHaki(client, sender, args, replyTo) {
+        const hakiText = `⚡ *SYSTÈME HAKI* ⚡\n\n${HakiSystem.getHakiList()}\n*═══════════════════════*\n\nPour débloquer un Haki:\n${this.prefix}debloquer [type]\n\nTypes: kenbunshoku, busoshoku, haoshoku`;
+        await CommandHandler.sendMessage(client, replyTo, hakiText);
+    }
+
+    async handleUnlockHaki(client, sender, args, replyTo) {
+        const player = PlayerManager.getPlayer(sender);
+        if (!player) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Créez d'abord un personnage!`);
+            return;
+        }
+
+        const hakiType = args[0]?.toLowerCase();
+        const hakiKey = hakiType === 'kenbunshoku' ? 'Kenbunshoku' : 
+                       hakiType === 'busoshoku' ? 'Busoshoku' : 
+                       hakiType === 'haoshoku' ? 'Haoshoku' : null;
+
+        if (!hakiKey) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Type invalide! Utilisez: kenbunshoku, busoshoku ou haoshoku`);
+            return;
+        }
+
+        if (player.haki[hakiType]?.unlocked) {
+            await CommandHandler.sendMessage(client, replyTo, `⚠️ Vous avez déjà débloqué ce Haki!`);
+            return;
+        }
+
+        const canUnlock = HakiSystem.canUnlock(hakiKey, player.level);
+        if (!canUnlock.can) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ ${canUnlock.reason}`);
+            return;
+        }
+
+        player.haki[hakiType] = { unlocked: true, level: 1 };
+        await PlayerManager.updatePlayer(sender, player);
+
+        const haki = HakiSystem.hakiTypes[hakiKey];
+        await CommandHandler.sendMessage(client, replyTo, `🎉 *HAKI DÉBLOQUÉ!* 🎉\n\n${haki.emoji} ${haki.name}\n\n${haki.description}\n\n*Bonus:*\n${Object.entries(haki.bonus).map(([k,v]) => `+${v} ${k}`).join('\n')}`);
+    }
+
+    async handleCrew(client, sender, args, replyTo) {
+        const crew = CrewSystem.getPlayerCrew(sender);
+        if (!crew) {
+            await CommandHandler.sendMessage(client, replyTo, `⚓ Vous n'êtes dans aucun équipage!\n\n${this.prefix}creerequipage [nom] - Créer un équipage\n${this.prefix}rejoindre [id] - Rejoindre un équipage`);
+            return;
+        }
+
+        const captain = PlayerManager.getPlayer(crew.captain);
+        const crewText = `⚓ *ÉQUIPAGE: ${crew.name.toUpperCase()}* ⚓\n\n👑 Capitaine: ${captain.name}\n👥 Membres: ${crew.members.length}\n💰 Trésor: ${crew.treasury.toLocaleString()} ฿\n⭐ Réputation: ${crew.reputation}\n\n*Membres:*\n${crew.members.map(id => {
+            const p = PlayerManager.getPlayer(id);
+            return `• ${p.name} (Niv.${p.level})`;
+        }).join('\n')}`;
+
+        await CommandHandler.sendMessage(client, replyTo, crewText);
+    }
+
+    async handleCreateCrew(client, sender, args, replyTo) {
+        const player = PlayerManager.getPlayer(sender);
+        if (!player) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Créez d'abord un personnage!`);
+            return;
+        }
+
+        if (args.length === 0) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Usage: ${this.prefix}creerequipage [nom]`);
+            return;
+        }
+
+        const crewName = args.join(' ');
+        const result = CrewSystem.createCrew(sender, crewName);
+
+        if (!result.success) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ ${result.reason}`);
+            return;
+        }
+
+        await CommandHandler.sendMessage(client, replyTo, `🎉 *ÉQUIPAGE CRÉÉ!* 🎉\n\n⚓ ${crewName}\n👑 Capitaine: ${player.name}\n\nID: ${result.crew.id}\n\nPartagez cet ID pour recruter!`);
+    }
+
+    async handleJoinCrew(client, sender, args, replyTo) {
+        const player = PlayerManager.getPlayer(sender);
+        if (!player) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Créez d'abord un personnage!`);
+            return;
+        }
+
+        if (args.length === 0) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ Usage: ${this.prefix}rejoindre [id équipage]`);
+            return;
+        }
+
+        const result = CrewSystem.joinCrew(args[0], sender);
+        if (!result.success) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ ${result.reason}`);
+            return;
+        }
+
+        await CommandHandler.sendMessage(client, replyTo, `🎉 Vous avez rejoint l'équipage!`);
+    }
+
+    async handleLeaveCrew(client, sender, args, replyTo) {
+        const result = CrewSystem.leaveCrew(sender);
+        if (!result.success) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ ${result.reason}`);
+            return;
+        }
+
+        if (result.disbanded) {
+            await CommandHandler.sendMessage(client, replyTo, `⚓ Équipage dissous (capitaine parti)`);
+        } else {
+            await CommandHandler.sendMessage(client, replyTo, `👋 Vous avez quitté l'équipage`);
+        }
+    }
 
 ${ZoneSystem.getZonesList()}
 
