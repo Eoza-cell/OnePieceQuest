@@ -71,9 +71,9 @@ const handleBoss = async (client, sender, args, replyTo) => {
             await CommandHandler.sendMessage(client, replyTo, winnerMessage + lootMessage);
         } else {
             // Combat continues
-            const { player, boss } = result.combatState;
+            const { player, boss, bossId } = result.combatState;
             const healthBarPlayer = generateHealthBar(player.currentEnergy, player.maxEnergy);
-            const healthBarBoss = generateHealthBar(boss.stats.health, BossSystem.getBoss(boss.name.toLowerCase().replace(/"/g, '').replace(/ /g, '-')).stats.health);
+            const healthBarBoss = generateHealthBar(boss.stats.health, BossSystem.getBoss(bossId).stats.health);
 
             const turnMessage = `${result.combatState.log.slice(-2).join('\n')}\n\n` +
                                 `${player.name}: ${healthBarPlayer}\n` +
