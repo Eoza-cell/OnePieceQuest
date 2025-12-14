@@ -68,6 +68,7 @@ class PlayerManager {
             inventory: [],
             createdAt: moment().format('YYYY-MM-DD HH:mm:ss'),
             lastEnergyRegen: Date.now(),
+            inventory: [],
             trainingCount: {
                 force: 0,
                 vitesse: 0,

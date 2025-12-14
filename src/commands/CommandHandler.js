@@ -8,8 +8,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class CommandHandler {
+    static prefix = '!';
+
     constructor() {
-        this.prefix = '!';
         this.commands = {};
     }
 
@@ -39,9 +40,9 @@ class CommandHandler {
 
         console.log(`📝 Texte extrait: "${text}" de ${jid}`);
 
-        if (!text.startsWith(this.prefix)) return;
+        if (!text.startsWith(CommandHandler.prefix)) return;
 
-        const args = text.slice(this.prefix.length).trim().split(/\s+/);
+        const args = text.slice(CommandHandler.prefix.length).trim().split(/\s+/);
         const commandName = args.shift().toLowerCase();
 
         console.log(`🎯 Commande détectée: ${commandName}`);
