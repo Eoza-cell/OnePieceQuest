@@ -133,6 +133,33 @@ class CombatSystem {
         };
         return costs[actionType] || 2;
     }
+
+    simulateTurn(player1, player2, action1, action2) {
+        let log = '';
+        let damage1 = 0;
+        let damage2 = 0;
+
+        if (action1 === 'attaque') {
+            damage2 = player1.attributes.force * 2;
+            player1.currentEnergy -= 2;
+            log += `${player1.name} attaque et inflige ${damage2} dégâts!\n`;
+        }
+
+        if (action2 === 'attaque') {
+            damage1 = player2.attributes.force * 2;
+            player2.currentEnergy -= 2;
+            log += `${player2.name} attaque et inflige ${damage1} dégâts!\n`;
+        }
+
+        player1.currentEnergy -= damage1;
+        player2.currentEnergy -= damage2;
+
+        return {
+            log,
+            player1,
+            player2,
+        };
+    }
 }
 
 export default new CombatSystem();
