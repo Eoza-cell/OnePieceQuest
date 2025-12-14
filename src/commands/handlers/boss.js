@@ -39,37 +39,52 @@ const handleBoss = async (client, sender, args, replyTo) => {
         const initialMessage = `*${player.name}* affronte *${boss.name}*!\n\n` +
                                `${player.name}: ${healthBarPlayer}\n` +
                                `${boss.name}: ${healthBarBoss}\n\n` +
-                               `C'est votre tour! Utilisez ${CommandHandler.prefix}attack ou ${CommandHandler.prefix}dodge.`;
+                               `Que faites-vous?`;
 
         await CommandHandler.sendMessage(client, replyTo, initialMessage);
         return;
     }
 
-    await CommandHandler.sendMessage(client, replyTo, `❌ Sous-commande invalide. Utilisez ${CommandHandler.prefix}boss list ou ${CommandHandler.prefix}boss fight [nom-du-boss].`);
-};
-
-// This is a temporary solution to link actions to the boss fight.
-// A more robust solution would involve a proper event bus.
-const handleAction = async (client, sender, action) => {
+    // Handle combat actions
     const combatId = activeBossFights.get(sender);
-    if (!combatId) return;
+    if (combatId) {
+        const actionText = args.join(' ');
+        const result = CombatSystem.handlePlayerAction(combatId, actionText);
 
-    const result = CombatSystem.handlePlayerAction(combatId, action);
-    const combat = result.combatState;
-    if (!combat) return; // Combat ended
+        if (result.error) {
+            await CommandHandler.sendMessage(client, replyTo, `❌ ${result.error}`);
+            return;
+        }
 
-    const { player, boss } = combat;
+        if (result.isPlayerWinner !== undefined) {
+            // Combat ended
+            activeBossFights.delete(sender);
+            const winnerMessage = result.isPlayerWinner ?
+                `Félicitations, vous avez vaincu ${result.loser.name}!` :
+                `Vous avez été vaincu par ${result.winner.name}...`;
 
-    const healthBarPlayer = generateHealthBar(player.currentEnergy, player.maxEnergy);
-    const healthBarBoss = generateHealthBar(boss.stats.health, BossSystem.getBoss(combat.boss.name.toLowerCase().replace(/ /g, '-')).stats.health);
+            let lootMessage = '';
+            if (result.loot && result.loot.length > 0) {
+                lootMessage = `\n\n*Butin:*\n` + result.loot.map(item => `- ${item.name}`).join('\n');
+            }
 
-    const turnMessage = `${combat.log.join('\n')}\n\n` +
-                        `${player.name}: ${healthBarPlayer}\n` +
-                        `${boss.name}: ${healthBarBoss}\n\n` +
-                        `C'est votre tour! Utilisez !attack ou !dodge.`;
+            await CommandHandler.sendMessage(client, replyTo, winnerMessage + lootMessage);
+        } else {
+            // Combat continues
+            const { player, boss } = result.combatState;
+            const healthBarPlayer = generateHealthBar(player.currentEnergy, player.maxEnergy);
+            const healthBarBoss = generateHealthBar(boss.stats.health, BossSystem.getBoss(boss.name.toLowerCase().replace(/"/g, '').replace(/ /g, '-')).stats.health);
 
-    await CommandHandler.sendMessage(client, player.phoneNumber, turnMessage);
+            const turnMessage = `${result.combatState.log.slice(-2).join('\n')}\n\n` +
+                                `${player.name}: ${healthBarPlayer}\n` +
+                                `${boss.name}: ${healthBarBoss}\n\n` +
+                                `Que faites-vous?`;
+
+            await CommandHandler.sendMessage(client, replyTo, turnMessage);
+        }
+    } else {
+        await CommandHandler.sendMessage(client, replyTo, `❌ Sous-commande invalide. Utilisez !boss list ou !boss fight [nom-du-boss].`);
+    }
 };
 
 export default handleBoss;
-export { handleAction };

@@ -26,7 +26,7 @@ class CombatSystem {
         return { combatId };
     }
 
-    handlePlayerAction(combatId, action) {
+    handlePlayerAction(combatId, actionText) {
         const combat = this.activeCombats.get(combatId);
         if (!combat) return { error: 'Combat not found.' };
 
@@ -35,17 +35,19 @@ class CombatSystem {
         // --- Player's Turn ---
         let playerDamage = 0;
         let playerActionLog = '';
+        let action = 'attack'; // Default action
+
+        if (actionText.includes('esquive') || actionText.includes('dodge')) {
+            action = 'dodge';
+        }
 
         if (action === 'attack') {
             playerDamage = Math.max(1, player.attributes.force * 2 - boss.stats.defense);
             player.currentEnergy -= 5;
             playerActionLog = `${player.name} attaque et inflige ${playerDamage} dégâts !`;
         } else if (action === 'dodge') {
-            // Dodge logic will be handled in the boss's turn
             player.currentEnergy -= 8;
             playerActionLog = `${player.name} se prépare à esquiver !`;
-        } else {
-            return { error: 'Invalid action.' };
         }
 
         boss.stats.health -= playerDamage;

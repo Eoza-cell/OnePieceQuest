@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 class WebServer {
     constructor() {
         this.app = express();
-        this.port = 5000;
+        this.port = process.env.PORT || 5000;
         this.logs = [];
         this.botStatus = {
             connected: false,
