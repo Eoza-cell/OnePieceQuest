@@ -7,19 +7,18 @@ import QRCode from 'qrcode';
 import CommandHandler from './src/commands/CommandHandler.js';
 import WebServer from './webServer.js';
 
-// Initialiser le serveur web
 const webServer = new WebServer();
 webServer.start();
 
 async function connectToWhatsApp() {
+    const commandHandler = await CommandHandler.create();
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
     const sock = makeWASocket({
         auth: state,
         printQRInTerminal: false,
         browser: ['Ubuntu', 'Chrome', '128.0.6613.86'],
-        version: [2, 3000, 1025190524],
-        logger: pino({ level: 'silent' }),
+        version: [2, 3000, 1027934701],
         getMessage: async key => {
             console.log('⚠️ Message non déchiffré, retry demandé:', key);
             return { conversation: '🔄 Réessaye d\'envoyer ton message' };
@@ -36,7 +35,6 @@ async function connectToWhatsApp() {
             qrcode.generate(qr, { small: true });
             console.log('\n⚠️ Le QR code expire après quelques secondes. Rechargez si nécessaire.\n');
             
-            // Générer QR code pour l'interface web
             QRCode.toDataURL(qr).then(qrDataUrl => {
                 webServer.setQRCode(qrDataUrl);
             });
@@ -77,7 +75,7 @@ async function connectToWhatsApp() {
         webServer.incrementMessages();
         webServer.addLog(`📨 Commande: ${messageText}`);
 
-        await CommandHandler.handleCommand(sock, message);
+        await commandHandler.handleCommand(sock, message);
     });
 }
 

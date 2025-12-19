@@ -1,57 +1,123 @@
+
 import PlayerManager from './PlayerManager.js';
+import BossSystem from './BossSystem.js';
 
 class CombatSystem {
     constructor() {
         this.activeCombats = new Map();
     }
 
-    calculateDamage(attacker, defender, attackType = 'basic') {
-        const baseDamage = attacker.attributes.force * 2;
-        const precisionBonus = attacker.attributes.precision * 0.5;
-        const intelligenceBonus = attacker.attributes.intelligence * 0.3;
+    startBossFight(playerId, bossId) {
+        const player = PlayerManager.getPlayer(playerId);
+        const boss = { ...BossSystem.getBoss(bossId) }; // Deep copy to avoid modifying the original
 
-        let totalDamage = baseDamage + precisionBonus + intelligenceBonus;
-
-        if (attackType === 'special') {
-            totalDamage *= 1.5;
-        } else if (attackType === 'ultimate') {
-            totalDamage *= 2.5;
+        if (!player || !boss) {
+            return { error: 'Player or boss not found.' };
         }
 
-        const isCritical = Math.random() * 100 < (attacker.attributes.precision / 2);
-        if (isCritical) {
-            totalDamage *= 1.5;
+        const combatId = `boss-${playerId}-${Date.now()}`;
+        this.activeCombats.set(combatId, {
+            player,
+            boss,
+            bossId, // Store the original bossId
+            turn: 1,
+            log: [`*Le combat contre ${boss.name} commence !*`],
+        });
+
+        return { combatId };
+    }
+
+    handlePlayerAction(combatId, actionText) {
+        const combat = this.activeCombats.get(combatId);
+        if (!combat) return { error: 'Combat not found.' };
+
+        const { player, boss } = combat;
+
+        // --- Player's Turn ---
+        let playerDamage = 0;
+        let playerActionLog = '';
+        let action = 'attack'; // Default action
+
+        if (actionText.includes('esquive') || actionText.includes('dodge')) {
+            action = 'dodge';
         }
 
-        const defenderEndurance = defender.attributes.endurance;
-        const damageReduction = defenderEndurance * 0.1;
-        totalDamage = Math.max(1, totalDamage - damageReduction);
+        if (action === 'attack') {
+            playerDamage = Math.max(1, player.attributes.force * 2 - boss.stats.defense);
+            player.currentEnergy -= 5;
+            playerActionLog = `${player.name} attaque et inflige ${playerDamage} dégâts !`;
+        } else if (action === 'dodge') {
+            player.currentEnergy -= 8;
+            playerActionLog = `${player.name} se prépare à esquiver !`;
+        }
+
+        boss.stats.health -= playerDamage;
+        combat.log.push(playerActionLog);
+
+        if (boss.stats.health <= 0) {
+            return this.endCombat(combatId, player, boss);
+        }
+
+        // --- Boss's Turn ---
+        const bossAction = boss.actions[Math.floor(Math.random() * boss.actions.length)];
+        let bossDamage = 0;
+        let bossActionLog = '';
+        let wasDodged = false;
+
+        if (bossAction.type === 'attack') {
+            if (action === 'dodge' && Math.random() < (player.attributes.vitesse / 100)) {
+                wasDodged = true;
+                bossActionLog = `${player.name} esquive de justesse l'attaque *${bossAction.name}* !`;
+            } else {
+                bossDamage = Math.max(1, bossAction.damageMultiplier * boss.stats.attack - player.attributes.endurance);
+                bossActionLog = `${boss.name} utilise *${bossAction.name}* et inflige ${bossDamage} dégâts !`;
+            }
+        } else if (bossAction.type === 'defense') {
+            boss.stats.defense += bossAction.defenseBoost;
+            bossActionLog = `${boss.name} utilise *${bossAction.name}* et augmente sa défense !`;
+        }
+
+        if (!wasDodged) {
+            player.currentEnergy -= bossDamage;
+        }
+
+        combat.log.push(bossActionLog);
+
+        if (player.currentEnergy <= 0) {
+            return this.endCombat(combatId, boss, player);
+        }
+
+        combat.turn++;
+        return { combatState: combat };
+    }
+
+    endCombat(combatId, winner, loser) {
+        this.activeCombats.delete(combatId);
+        const isPlayerWinner = winner.hasOwnProperty('phoneNumber');
+
+        let loot = null;
+        if (isPlayerWinner) {
+            const boss = loser;
+            loot = [];
+            for (const item of boss.lootTable) {
+                if (Math.random() < item.chance) {
+                    loot.push(item);
+                    winner.inventory.push(item);
+                }
+            }
+            PlayerManager.updatePlayer(winner.phoneNumber, { inventory: winner.inventory });
+        }
 
         return {
-            damage: Math.floor(totalDamage),
-            isCritical,
-            type: attackType
+            winner,
+            loser,
+            isPlayerWinner,
+            loot,
         };
     }
 
-    canDodge(attacker, defender) {
-        const attackerSpeed = attacker.attributes.vitesse;
-        const defenderReflexe = defender.attributes.reflexe;
-        const defenderSpeed = defender.attributes.vitesse;
-
-        const dodgeChance = (defenderReflexe * 2 + defenderSpeed) - attackerSpeed;
-        const finalDodgeChance = Math.max(5, Math.min(50, dodgeChance));
-
-        return Math.random() * 100 < finalDodgeChance;
-    }
-
-    getReactionTime(reflexe) {
-        if (reflexe >= 25) return 0.5;
-        if (reflexe >= 20) return 0.7;
-        if (reflexe >= 15) return 1.0;
-        if (reflexe >= 10) return 1.5;
-        if (reflexe >= 5) return 2.0;
-        return 3.0;
+    getCombat(combatId) {
+        return this.activeCombats.get(combatId);
     }
 
     getSpeedDescription(vitesse) {
@@ -63,42 +129,76 @@ class CombatSystem {
         return '👣 Course normale (5 m/s)';
     }
 
+    getReactionTime(reflexe) {
+        if (reflexe >= 25) return 0.5;
+        if (reflexe >= 20) return 0.7;
+        if (reflexe >= 15) return 1.0;
+        if (reflexe >= 10) return 1.5;
+        if (reflexe >= 5) return 2.0;
+        return 3.0;
+    }
+
     simulateFight(player1, player2) {
         const results = [];
         let p1Energy = player1.currentEnergy;
         let p2Energy = player2.currentEnergy;
 
         let turn = 1;
-        const maxTurns = 10;
+        const maxTurns = 20; // Increased for more dynamic fights
 
-        while (turn <= maxTurns && p1Energy > 0 && p2Energy > 0) {
-            if (turn % 2 === 1) {
-                const dodged = this.canDodge(player1, player2);
-                if (dodged) {
-                    results.push(`⚔️ Tour ${turn}: ${player2.name} esquive l'attaque de ${player1.name}!`);
-                    p2Energy -= 4;
-                } else {
-                    const attackResult = this.calculateDamage(player1, player2);
-                    const critText = attackResult.isCritical ? ' 💥 CRITIQUE!' : '';
-                    results.push(`⚔️ Tour ${turn}: ${player1.name} inflige ${attackResult.damage} dégâts${critText}`);
-                    p2Energy -= attackResult.damage;
-                }
-                p1Energy -= 2;
-            } else {
-                const dodged = this.canDodge(player2, player1);
-                if (dodged) {
-                    results.push(`⚔️ Tour ${turn}: ${player1.name} esquive l'attaque de ${player2.name}!`);
-                    p1Energy -= 4;
-                } else {
-                    const attackResult = this.calculateDamage(player2, player1);
-                    const critText = attackResult.isCritical ? ' 💥 CRITIQUE!' : '';
-                    results.push(`⚔️ Tour ${turn}: ${player2.name} inflige ${attackResult.damage} dégâts${critText}`);
-                    p1Energy -= attackResult.damage;
-                }
-                p2Energy -= 2;
+        const calculateDodgeChance = (attacker, defender) => {
+            const speedDiff = defender.attributes.vitesse - attacker.attributes.vitesse;
+            const reflexBonus = defender.attributes.reflexe * 0.01;
+            // Base dodge chance of 5%, plus bonuses. Max 75%.
+            return Math.max(0.05, Math.min(0.75, 0.05 + (speedDiff * 0.02) + reflexBonus));
+        };
+
+        const calculateCritChance = (attacker) => {
+            // 5% chance per 10 precision points.
+            return (attacker.attributes.precision / 10) * 0.05;
+        };
+
+        const calculateDamage = (attacker, defender, isCrit) => {
+            const baseDamage = attacker.attributes.force * (1 + (attacker.attributes.force * 0.02));
+            const defenseReduction = 1 - (defender.attributes.endurance / 100); // 1% reduction per endurance point
+            let damage = Math.max(1, baseDamage * defenseReduction);
+            if (isCrit) {
+                damage *= 1.5; // Critical hits do 50% more damage
+                results.push(`💥 *COUP CRITIQUE!*`);
+            }
+            return Math.floor(damage);
+        };
+
+        const performAttack = (attacker, defender, currentDefenderEnergy) => {
+            const dodgeChance = calculateDodgeChance(attacker, defender);
+            if (Math.random() < dodgeChance) {
+                results.push(`💨 ${defender.name} esquive l'attaque de ${attacker.name}!`);
+                return currentDefenderEnergy - 4; // Dodge costs energy
             }
 
-            if (p1Energy <= 0 || p2Energy <= 0) break;
+            const critChance = calculateCritChance(attacker);
+            const isCrit = Math.random() < critChance;
+            const damage = calculateDamage(attacker, defender, isCrit);
+
+            results.push(`⚔️ ${attacker.name} inflige ${damage} dégâts à ${defender.name}.`);
+            return currentDefenderEnergy - damage;
+        };
+
+        while (turn <= maxTurns && p1Energy > 0 && p2Energy > 0) {
+            results.push(`\n*— Tour ${turn} —*`);
+
+            // Player 1 attacks Player 2
+            p2Energy = performAttack(player1, player2, p2Energy);
+            if (p2Energy <= 0) break;
+
+            // Player 2 attacks Player 1
+            p1Energy = performAttack(player2, player1, p1Energy);
+            if (p1Energy <= 0) break;
+
+            // Energy cost per turn
+            p1Energy -= 2;
+            p2Energy -= 2;
+
             turn++;
         }
 
@@ -113,7 +213,11 @@ class CombatSystem {
 
         results.push('');
         results.push(`🏆 *${winner.name}* remporte le combat!`);
-        results.push(`Énergie restante: ${Math.max(0, winner === player1 ? p1Energy : p2Energy)}`);
+
+        // Ensure energy doesn't go below zero in the final report
+        p1Energy = Math.max(0, p1Energy);
+        p2Energy = Math.max(0, p2Energy);
+        results.push(`Énergie restante: ${winner.name} (${p1Energy}) | ${loser.name} (${p2Energy})`);
 
         return {
             winner,
@@ -121,17 +225,6 @@ class CombatSystem {
             results: results.join('\n'),
             xpGained: 100
         };
-    }
-
-    getEnergyCost(actionType) {
-        const costs = {
-            basic: 2,
-            dodge: 4,
-            special: 10,
-            ultimate: 20,
-            defense: 5
-        };
-        return costs[actionType] || 2;
     }
 }
 
